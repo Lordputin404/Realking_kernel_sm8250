@@ -3831,5 +3831,5 @@ bool susfs_is_mnt_devname_ksu(struct path *path) {
 		}
 	}
 	return false;
-
+}
 #endif
