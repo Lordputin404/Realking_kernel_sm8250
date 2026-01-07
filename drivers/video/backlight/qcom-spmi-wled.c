@@ -1652,6 +1652,7 @@ static struct device_attribute wled_flash_attrs[] = {
 		NULL),
 };
 
+#ifdef CONFIG_BACKLIGHT_QCOM_SPMI_WLED
 int wled_flash_led_prepare(struct led_trigger *trig, int options,
 				int *max_current)
 {
@@ -1702,6 +1703,7 @@ int wled_flash_led_prepare(struct led_trigger *trig, int options,
 	return 0;
 }
 EXPORT_SYMBOL(wled_flash_led_prepare);
+#endif
 
 static int wled_flash_set_step_delay(struct wled *wled, int step_delay)
 {
