@@ -39,13 +39,11 @@ jobs:
 
       - name: Integrate KernelSU-Next (Manual setup)
         run: |
-          cd kernel_tree
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
           echo "KernelSU-Next integration completed."
 
       - name: Build Kernel
         run: |
-          cd kernel_tree
           DIR=$(readlink -f .)
           MAIN=$(readlink -f ${DIR}/..)
 
