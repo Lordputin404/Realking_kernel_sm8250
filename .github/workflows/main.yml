@@ -52,16 +52,14 @@ jobs:
           export KBUILD_COMPILER_STRING="$(${{ env.CLANG_PATH }}/clang --version | head -n1 | perl -pe 's/\\(http.*?\\)//g' | sed -e 's/  */ /g')"
 
           echo "**** Kernel defconfig is set to $KERNEL_DEFCONFIG ****"
-          echo -e "\033[0;34m***********************************************\033[0m"
-          echo "          BUILDING KERNEL          "
-          echo -e "\033[0;34m***********************************************\033[0m"
 
-          make $KERNEL_DEFCONFIG O=out CC=clang || true    
+          make $KERNEL_DEFCONFIG O=out CC=clang || true
+          make O=out oldconfig || true
+
           make -j$(nproc --all) O=out \
           CC=clang \
           ARCH=arm64 \
-          CROSS_COMPILE=aarch64-linux-gnu- \
-          NM=llvm-nm \
+          CROSS_COMPILE=aarch64-linux-gnu- \          NM=llvm-nm \
           OBJDUMP=llvm-objdump \
           STRIP=llvm-strip \
           LD=ld.lld \
