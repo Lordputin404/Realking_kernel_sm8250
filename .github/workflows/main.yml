@@ -1,4 +1,4 @@
-name: Build RealKing Kernel (WebX Clang 19.1.5 + KernelSU-Next)
+name: Build RealKing Kernel (WebX Clang 19.1.5 + HyperOS Auto-Select)
 
 on:
   workflow_dispatch:
@@ -8,66 +8,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Kernel (repo root)
+      - name: Checkout RK Kernel (root repo)
         uses: actions/checkout@v4
         with:
           ref: m-staging
           fetch-depth: 1
           submodules: false
           clean: true
+          set-safe-directory: true
 
-      - name: Install Dependencies (Python2 bypass + ncurses)
+      - name: Prepare build_kernel.sh (Auto-select choices + non-interactive)
         run: |
-          sudo apt update -y
-          sudo apt install -y --no-install-recommends flex libncurses-dev perl wget zstd lld llvm
-          sudo ln -sf /usr/bin/python3 /usr/bin/python2
-          echo "Python2 calls bypassed using Python3."
+          chmod +x build.sh
+          sed -i 's|read -p "Enter the number of your choice: " clang_choice|clang_choice=${CLANG_CHOICE:-2}|g' build.sh
+          sed -i 's|read -p "Enter the number of your choice: " build_choice|build_choice=${BUILD_CHOICE:-1}|g' build.sh
+          echo "CI mode enabled — script will take env choices."
 
-      - name: Download & Extract WebX Clang 19.1.5
+      - name: Run Kernel Build Script with Auto-Selected Options
         run: |
-          CLANG_URL=$(curl -s https://raw.githubusercontent.com/v3kt0r-87/Clang-Stable/main/clang-weebx.txt)
-          echo "Resolved Clang URL: $CLANG_URL"
-          wget "$CLANG_URL" -O weebx-clang.tar.gz
-          mkdir -p clang
-          tar -xvf weebx-clang.tar.gz -C clang
-          echo "CLANG_PATH=$(pwd)/clang/bin" >> $GITHUB_ENV
-          rm -f weebx-clang.tar.gz
-          echo "WebX Clang setup completed."
-
-      - name: Build Kernel (no zip, no boot.img)
-        run: |
-          # Ensure we are in kernel root
-          cd $GITHUB_WORKSPACE
-
-          # Force system PATH so inner make shells find tools
-          export PATH="/usr/bin:$PATH"
-          export PATH="${{ env.CLANG_PATH }}:$PATH"
-
-          export ARCH=arm64
-          export SUBARCH=ARM64
-          export LD_LIBRARY_PATH="${{ env.CLANG_PATH }}/../lib:$LD_LIBRARY_PATH"  # safety
-          export KBUILD_BUILD_USER="lordputin"
-          export KBUILD_BUILD_HOST="ubuntu"
-
-          echo "Applying defconfig..."
-          make ARCH=arm64 munch_defconfig O=out CC=clang || true
-
-          echo "Running oldconfig..."
-          make O=out oldconfig || true
-
-          echo "Compiling kernel..."
-          make -j$(nproc --all) O=out \
-          CC=clang \
-          ARCH=arm64 \
-          CROSS_COMPILE=aarch64-linux-gnu- \
-          NM=llvm-nm \
-          OBJDUMP=llvm-objdump \
-          STRIP=llvm-strip \
-          LD=ld.lld \
-          LLVM=1 LLVM_IAS=1 || true
-
-      - name: Upload Kernel Image (Image.gz only)
-        uses: actions/upload-artifact@v4
-        with:
-          name: Image.gz
-          path: out/arch/arm64/boot/Image.gz
+          export CLANG_CHOICE=2
+          export BUILD_CHOICE=1
+          ./build.sh
