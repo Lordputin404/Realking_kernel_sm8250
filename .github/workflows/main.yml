@@ -1,4 +1,4 @@
-name: Build RealKing kernel (WebX Clang 19.1.5 + KernelSU-Next)
+name: Build RealKing Kernel (WebX Clang 19.1.5 + KernelSU-Next)
 
 on:
   workflow_dispatch:
@@ -8,11 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install Dependencies
-        run: |
-          sudo apt install -y flex libncurses6
-
-      - name: Checkout Kernel
+      - name: Checkout Kernel (repo root)
         uses: actions/checkout@v4
         with:
           ref: m-staging
@@ -20,70 +16,49 @@ jobs:
           submodules: false
           clean: true
 
+      - name: Install Dependencies (Python2 bypass + ncurses)
+        run: |
+          sudo apt update -y
+          sudo apt install -y --no-install-recommends flex libncurses-dev perl wget zstd lld llvm
+          sudo ln -sf /usr/bin/python3 /usr/bin/python2
+          echo "Python2 calls bypassed using Python3."
+
       - name: Download & Extract WebX Clang 19.1.5
         run: |
           CLANG_URL=$(curl -s https://raw.githubusercontent.com/v3kt0r-87/Clang-Stable/main/clang-weebx.txt)
           echo "Resolved Clang URL: $CLANG_URL"
-
-          echo "Downloading WebX Clang..."
           wget "$CLANG_URL" -O weebx-clang.tar.gz
-
-          echo "Extracting Clang..."
           mkdir -p clang
           tar -xvf weebx-clang.tar.gz -C clang
-
           echo "CLANG_PATH=$(pwd)/clang/bin" >> $GITHUB_ENV
-
           rm -f weebx-clang.tar.gz
-          echo "WebX Clang setup done."
+          echo "WebX Clang setup completed."
 
-      - name: Fix Toolchain Path (Clang 21 LLVM tools)
+      - name: Build Kernel (no zip, no boot.img)
         run: |
-          echo "Adding Clang LLVM tools to PATH..."
-          echo "CLANG_PATH=$(pwd)/clang-aosp-21/bin" >> $GITHUB_ENV
-          echo "PATH=$(pwd)/clang-aosp-21/bin:$PATH" >> $GITHUB_ENV   
-
-      - name: Install Python 2 & LLD linker
-        run: |
-          sudo apt update -y
-          sudo apt install -y python2 binutils
-          sudo ln -sf /usr/bin/python2 /usr/bin/python2.7
-          sudo ln -sf /usr/bin/python2.7 /usr/bin/python2
-          echo "Python 2 installed and symlinked."
-
-          # Fix LLD linker
-          sudo apt install -y llvm lld
-          sudo ln -sf /usr/bin/ld.lld /usr/bin/ld.lld    
-          
-      - name: Build Kernel
-        run: |
-          export CLANG_PATH="${{ env.CLANG_PATH }}"
-          export PATH="$CLANG_PATH:$PATH:/usr/bin"
-
+          echo "Using toolchain: $CLANG_PATH"
+          export PATH="${{ env.CLANG_PATH }}:$PATH:/usr/bin"
           export ARCH=arm64
           export SUBARCH=ARM64
           export KBUILD_BUILD_USER="lordputin"
           export KBUILD_BUILD_HOST="ubuntu"
+          export KBUILD_COMPILER_STRING="$(${{ env.CLANG_PATH }}/clang --version | head -n1 | perl -pe 's/\\(http.*?\\)//g' | sed -e 's/  */ /g')"
 
-          echo "Applying defconfig..."
-          make ARCH=arm64 munch_defconfig O=out || true
-
-          echo "Syncing config..."
+          echo "**** Kernel defconfig is set to munch_defconfig ****"
+          make ARCH=arm64 munch_defconfig O=out CC=clang || true
           make O=out oldconfig || true
-
-          echo "Compiling kernel..."
           make -j$(nproc --all) O=out \
-          CC=clang \
-          ARCH=arm64 \
-          CROSS_COMPILE=aarch64-linux-gnu- \
-          NM=llvm-nm \
-          OBJDUMP=llvm-objdump \
-          STRIP=llvm-strip \
-          LD=ld.lld \
-          LLVM=1 LLVM_IAS=1 || true
-          
+            CC=clang \
+            ARCH=arm64 \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            NM=llvm-nm \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
+            LD=ld.lld \
+            LLVM=1 LLVM_IAS=1 || true
+
       - name: Upload Kernel Image (Image.gz only)
         uses: actions/upload-artifact@v4
         with:
-         name: Image.gz
-         path: out/arch/arm64/boot/Image.gz
+          name: Image.gz
+          path: out/arch/arm64/boot/Image.gz
