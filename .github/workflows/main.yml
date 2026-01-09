@@ -1,0 +1,72 @@
+name: Build RealKing kernel (WebX Clang 19.1.5 + KernelSU-Next)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y flex libncurses5 perl wget zstd
+
+      - name: Checkout Kernel
+        uses: actions/checkout@v4
+        with:
+          ref: m-staging
+          fetch-depth: 1
+          submodules: false
+          clean: true
+
+      - name: Download & Extract WebX Clang 19.1.5
+        run: |
+          DIR=$(readlink -f kernel_tree)
+          MAIN=$(readlink -f ${DIR}/..)
+          CLANG_URL=$(curl -s https://raw.githubusercontent.com/v3kt0r-87/Clang-Stable/main/clang-weebx.txt)
+          ARCHIVE_NAME="weebx-clang.tar.gz"
+
+          echo "Downloading WebX Clang from: $CLANG_URL"
+          wget "$CLANG_URL" -O "$MAIN/$ARCHIVE_NAME"
+          mkdir -p "$MAIN/clang"
+          tar -xvf "$MAIN/$ARCHIVE_NAME" -C "$MAIN/clang"
+          echo "CLANG_PATH=$MAIN/clang/bin" >> $GITHUB_ENV
+          rm -f "$MAIN/$ARCHIVE_NAME"
+
+      - name: Integrate KernelSU-Next (Manual setup)
+        run: |
+          cd kernel_tree
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
+          echo "KernelSU-Next integration completed."
+
+      - name: Build Kernel
+        run: |
+          cd kernel_tree
+          DIR=$(readlink -f .)
+          MAIN=$(readlink -f ${DIR}/..)
+
+          export PATH="$MAIN/clang/bin:$PATH"
+          export ARCH=arm64
+          export SUBARCH=ARM64
+          export KBUILD_BUILD_USER="lordputin"
+          export KBUILD_BUILD_HOST="ubuntu"
+          export KBUILD_COMPILER_STRING="$($MAIN/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//g' | sed -e 's/  */ /g')"
+
+          echo "Using Compiler: $KBUILD_COMPILER_STRING"
+          make munch_defconfig O=out CC=clang
+          make -j$(nproc --all) O=out \
+            CC=clang \
+            ARCH=arm64 \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            NM=llvm-nm \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
+            LLVM=1 LLVM_IAS=1
+
+      - name: Upload Kernel Image (Image.gz only)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Image.gz
+          path: kernel_tree/out/arch/arm64/boot/Image.gz
