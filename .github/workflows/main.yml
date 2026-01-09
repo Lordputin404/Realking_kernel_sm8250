@@ -37,23 +37,18 @@ jobs:
           rm -f weebx-clang.tar.gz
           echo "WebX Clang setup done."
 
+      - name: Fix Toolchain Path (Clang 21 LLVM tools)
+        run: |
+          echo "Adding Clang LLVM tools to PATH..."
+          echo "CLANG_PATH=$(pwd)/clang-aosp-21/bin" >> $GITHUB_ENV
+          echo "PATH=$(pwd)/clang-aosp-21/bin:$PATH" >> $GITHUB_ENV    
+          
       - name: Build Kernel
         run: |
-          cd $GITHUB_WORKSPACE
+          echo "Using toolchain: $CLANG_PATH"
+          export PATH="$CLANG_PATH:$PATH"
 
-          export KERNEL_DEFCONFIG="munch_defconfig"
-          export PATH="${{ env.CLANG_PATH }}:$PATH"
-          export ARCH=arm64
-          export SUBARCH=ARM64
-          export KBUILD_BUILD_USER="lordputin"
-          export KBUILD_BUILD_HOST="ubuntu"
-          export KBUILD_COMPILER_STRING="$(${{ env.CLANG_PATH }}/clang --version | head -n1 | perl -pe 's/\\(http.*?\\)//g' | sed -e 's/  */ /g')"
-
-          echo "**** Kernel defconfig is set to $KERNEL_DEFCONFIG ****"
-
-          make $KERNEL_DEFCONFIG O=out CC=clang || true
-          make -C out oldconfig || true
-
+          make munch_defconfig O=out CC=clang || true
           make -j$(nproc --all) O=out \
           CC=clang \
           ARCH=arm64 \
