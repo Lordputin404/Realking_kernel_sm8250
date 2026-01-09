@@ -56,14 +56,13 @@ jobs:
 
           echo "Using Compiler: $KBUILD_COMPILER_STRING"
           make munch_defconfig O=out CC=clang
-          make -j$(nproc --all) O=out \
-            CC=clang \
-            ARCH=arm64 \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            NM=llvm-nm \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip \
-            LLVM=1 LLVM_IAS=1
+          make O=out CC=clang -j$(nproc --all) \
+          CROSS_COMPILE=aarch64-linux-gnu- \
+          NM=llvm-nm \
+          OBJDUMP=llvm-objdump \
+          STRIP=llvm-strip \
+          LD=${{ env.CLANG_PATH }}/ld.lld \
+          LLVM=1 LLVM_IAS=1
 
       - name: Upload Kernel Image (Image.gz only)
         uses: actions/upload-artifact@v4
