@@ -41,29 +41,37 @@ jobs:
         run: |
           echo "Adding Clang LLVM tools to PATH..."
           echo "CLANG_PATH=$(pwd)/clang-aosp-21/bin" >> $GITHUB_ENV
-          echo "PATH=$(pwd)/clang-aosp-21/bin:$PATH" >> $GITHUB_ENV    
+          echo "PATH=$(pwd)/clang-aosp-21/bin:$PATH" >> $GITHUB_ENV   
+
+      - name: Install Python 2 & LLD linker
+        run: |
+          sudo apt update -y
+          sudo apt install -y python2 binutils
+          sudo ln -sf /usr/bin/python2 /usr/bin/python2.7
+          sudo ln -sf /usr/bin/python2.7 /usr/bin/python2
+          echo "Python 2 installed and symlinked."
+
+          # Fix LLD linker
+          sudo apt install -y llvm lld
+          sudo ln -sf /usr/bin/ld.lld /usr/bin/ld.lld    
           
       - name: Build Kernel
         run: |
-          cd $GITHUB_WORKSPACE
+          export CLANG_PATH="${{ env.CLANG_PATH }}"
+          export PATH="$CLANG_PATH:$PATH:/usr/bin"
 
-          # Fix toolchain path
-          export CLANG_PATH="$(pwd)/clang-aosp-21/bin"
-          export PATH="$CLANG_PATH:$PATH"
-
-          # Arch exports
           export ARCH=arm64
           export SUBARCH=ARM64
           export KBUILD_BUILD_USER="lordputin"
           export KBUILD_BUILD_HOST="ubuntu"
 
-          # Apply defconfig (correct path)
+          echo "Applying defconfig..."
           make ARCH=arm64 munch_defconfig O=out || true
 
-          # Sync config
+          echo "Syncing config..."
           make O=out oldconfig || true
 
-          # Compile kernel
+          echo "Compiling kernel..."
           make -j$(nproc --all) O=out \
           CC=clang \
           ARCH=arm64 \
