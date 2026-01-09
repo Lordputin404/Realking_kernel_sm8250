@@ -36,26 +36,35 @@ jobs:
 
       - name: Build Kernel (no zip, no boot.img)
         run: |
-          echo "Using toolchain: $CLANG_PATH"
-          export PATH="${{ env.CLANG_PATH }}:$PATH:/usr/bin"
+          # Ensure we are in kernel root
+          cd $GITHUB_WORKSPACE
+
+          # Force system PATH so inner make shells find tools
+          export PATH="/usr/bin:$PATH"
+          export PATH="${{ env.CLANG_PATH }}:$PATH"
+
           export ARCH=arm64
           export SUBARCH=ARM64
+          export LD_LIBRARY_PATH="${{ env.CLANG_PATH }}/../lib:$LD_LIBRARY_PATH"  # safety
           export KBUILD_BUILD_USER="lordputin"
           export KBUILD_BUILD_HOST="ubuntu"
-          export KBUILD_COMPILER_STRING="$(${{ env.CLANG_PATH }}/clang --version | head -n1 | perl -pe 's/\\(http.*?\\)//g' | sed -e 's/  */ /g')"
 
-          echo "**** Kernel defconfig is set to munch_defconfig ****"
+          echo "Applying defconfig..."
           make ARCH=arm64 munch_defconfig O=out CC=clang || true
+
+          echo "Running oldconfig..."
           make O=out oldconfig || true
+
+          echo "Compiling kernel..."
           make -j$(nproc --all) O=out \
-            CC=clang \
-            ARCH=arm64 \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            NM=llvm-nm \
-            OBJDUMP=llvm-objdump \
-            STRIP=llvm-strip \
-            LD=ld.lld \
-            LLVM=1 LLVM_IAS=1 || true
+          CC=clang \
+          ARCH=arm64 \
+          CROSS_COMPILE=aarch64-linux-gnu- \
+          NM=llvm-nm \
+          OBJDUMP=llvm-objdump \
+          STRIP=llvm-strip \
+          LD=ld.lld \
+          LLVM=1 LLVM_IAS=1 || true
 
       - name: Upload Kernel Image (Image.gz only)
         uses: actions/upload-artifact@v4
