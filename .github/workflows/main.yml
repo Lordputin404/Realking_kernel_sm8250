@@ -10,8 +10,7 @@ jobs:
     steps:
       - name: Install Dependencies
         run: |
-          sudo apt update
-          sudo apt install -y flex libncurses5 perl wget zstd
+          sudo apt install -y flex libncurses6
 
       - name: Checkout Kernel
         uses: actions/checkout@v4
