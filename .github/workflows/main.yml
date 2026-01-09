@@ -44,6 +44,9 @@ jobs:
 
       - name: Build Kernel
         run: |
+          cd $GITHUB_WORKSPACE
+
+          export KERNEL_DEFCONFIG="munch_defconfig"
           export PATH="${{ env.CLANG_PATH }}:$PATH"
           export ARCH=arm64
           export SUBARCH=ARM64
@@ -54,17 +57,17 @@ jobs:
           echo "**** Kernel defconfig is set to $KERNEL_DEFCONFIG ****"
 
           make $KERNEL_DEFCONFIG O=out CC=clang || true
-          make O=out oldconfig || true
+          make -C out oldconfig || true
 
-          make -j$(nproc --all) O=out \
-          CC=clang \
-          ARCH=arm64 \
-          CROSS_COMPILE=aarch64-linux-gnu- \
-          NM=llvm-nm \
-          OBJDUMP=llvm-objdump \
-          STRIP=llvm-strip \
-          LD=ld.lld \
-          LLVM=1 LLVM_IAS=1 || true
+         make -j$(nproc --all) O=out \
+         CC=clang \
+         ARCH=arm64 \
+         CROSS_COMPILE=aarch64-linux-gnu- \
+         NM=llvm-nm \
+         OBJDUMP=llvm-objdump \
+         STRIP=llvm-strip \
+         LD=ld.lld \
+         LLVM=1 LLVM_IAS=1 || true
           
       - name: Upload Kernel Image (Image.gz only)
         uses: actions/upload-artifact@v4
