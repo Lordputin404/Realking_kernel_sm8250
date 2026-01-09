@@ -20,8 +20,8 @@ jobs:
       - name: Prepare build_kernel.sh (Auto-select choices + non-interactive)
         run: |
           chmod +x build_kernel.sh
-          sed -i 's|read -p "Enter the number of your choice: " clang_choice|clang_choice=${CLANG_CHOICE:-2}|g' build.sh
-          sed -i 's|read -p "Enter the number of your choice: " build_choice|build_choice=${BUILD_CHOICE:-1}|g' build.sh
+          sed -i 's|read -p "Enter the number of your choice: " clang_choice|clang_choice=${CLANG_CHOICE:-2}|g' build_kernel.sh
+          sed -i 's|read -p "Enter the number of your choice: " build_choice|build_choice=${BUILD_CHOICE:-1}|g' build_kernel.sh
           echo "CI mode enabled — script will take env choices."
 
       - name: Run Kernel Build Script with Auto-Selected Options
