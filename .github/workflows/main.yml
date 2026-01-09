@@ -59,7 +59,8 @@ jobs:
           make -j$(nproc --all) O=out \
           CC=clang \
           ARCH=arm64 \
-          CROSS_COMPILE=aarch64-linux-gnu- \          NM=llvm-nm \
+          CROSS_COMPILE=aarch64-linux-gnu- \
+          NM=llvm-nm \
           OBJDUMP=llvm-objdump \
           STRIP=llvm-strip \
           LD=ld.lld \
@@ -68,5 +69,5 @@ jobs:
       - name: Upload Kernel Image (Image.gz only)
         uses: actions/upload-artifact@v4
         with:
-          name: Image.gz
-          path: kernel_tree/out/arch/arm64/boot/Image.gz
+         name: Image.gz
+         path: out/arch/arm64/boot/Image.gz
