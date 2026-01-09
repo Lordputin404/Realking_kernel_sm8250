@@ -22,17 +22,20 @@ jobs:
 
       - name: Download & Extract WebX Clang 19.1.5
         run: |
-          DIR=$(readlink -f kernel_tree)
-          MAIN=$(readlink -f ${DIR}/..)
           CLANG_URL=$(curl -s https://raw.githubusercontent.com/v3kt0r-87/Clang-Stable/main/clang-weebx.txt)
-          ARCHIVE_NAME="weebx-clang.tar.gz"
+          echo "Resolved Clang URL: $CLANG_URL"
 
-          echo "Downloading WebX Clang from: $CLANG_URL"
-          wget "$CLANG_URL" -O "$MAIN/$ARCHIVE_NAME"
-          mkdir -p "$MAIN/clang"
-          tar -xvf "$MAIN/$ARCHIVE_NAME" -C "$MAIN/clang"
-          echo "CLANG_PATH=$MAIN/clang/bin" >> $GITHUB_ENV
-          rm -f "$MAIN/$ARCHIVE_NAME"
+          echo "Downloading WebX Clang..."
+          wget "$CLANG_URL" -O weebx-clang.tar.gz
+
+          echo "Extracting Clang..."
+          mkdir -p clang
+          tar -xvf weebx-clang.tar.gz -C clang
+
+          echo "CLANG_PATH=$(pwd)/clang/bin" >> $GITHUB_ENV
+
+          rm -f weebx-clang.tar.gz
+          echo "WebX Clang setup done."
 
       - name: Integrate KernelSU-Next (Manual setup)
         run: |
