@@ -37,11 +37,6 @@ jobs:
           rm -f weebx-clang.tar.gz
           echo "WebX Clang setup done."
 
-      - name: Integrate KernelSU-Next (Manual setup)
-        run: |
-          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
-          echo "KernelSU-Next integration completed."
-
       - name: Build Kernel
         run: |
           cd $GITHUB_WORKSPACE
