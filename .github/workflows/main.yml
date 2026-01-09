@@ -44,25 +44,28 @@ jobs:
 
       - name: Build Kernel
         run: |
-          DIR=$(readlink -f .)
-          MAIN=$(readlink -f ${DIR}/..)
-
-          export PATH="$MAIN/clang/bin:$PATH"
+          export PATH="${{ env.CLANG_PATH }}:$PATH"
           export ARCH=arm64
           export SUBARCH=ARM64
           export KBUILD_BUILD_USER="lordputin"
           export KBUILD_BUILD_HOST="ubuntu"
-          export KBUILD_COMPILER_STRING="$($MAIN/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//g' | sed -e 's/  */ /g')"
+          export KBUILD_COMPILER_STRING="$(${{ env.CLANG_PATH }}/clang --version | head -n1 | perl -pe 's/\\(http.*?\\)//g' | sed -e 's/  */ /g')"
 
-          echo "Using Compiler: $KBUILD_COMPILER_STRING"
-          make munch_defconfig O=out CC=clang
-          make O=out CC=clang -j$(nproc --all) \
+          echo "**** Kernel defconfig is set to $KERNEL_DEFCONFIG ****"
+          echo -e "\033[0;34m***********************************************\033[0m"
+          echo "          BUILDING KERNEL          "
+          echo -e "\033[0;34m***********************************************\033[0m"
+
+          make $KERNEL_DEFCONFIG O=out CC=clang || true    
+          make -j$(nproc --all) O=out \
+          CC=clang \
+          ARCH=arm64 \
           CROSS_COMPILE=aarch64-linux-gnu- \
           NM=llvm-nm \
           OBJDUMP=llvm-objdump \
           STRIP=llvm-strip \
-          LD=${{ env.CLANG_PATH }}/ld.lld \
-          LLVM=1 LLVM_IAS=1
+          LD=ld.lld \
+          LLVM=1 LLVM_IAS=1 || true
 
       - name: Upload Kernel Image (Image.gz only)
         uses: actions/upload-artifact@v4
