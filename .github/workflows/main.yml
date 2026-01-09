@@ -45,10 +45,25 @@ jobs:
           
       - name: Build Kernel
         run: |
-          echo "Using toolchain: $CLANG_PATH"
+          cd $GITHUB_WORKSPACE
+
+          # Fix toolchain path
+          export CLANG_PATH="$(pwd)/clang-aosp-21/bin"
           export PATH="$CLANG_PATH:$PATH"
 
-          make munch_defconfig O=out CC=clang || true
+          # Arch exports
+          export ARCH=arm64
+          export SUBARCH=ARM64
+          export KBUILD_BUILD_USER="lordputin"
+          export KBUILD_BUILD_HOST="ubuntu"
+
+          # Apply defconfig (correct path)
+          make ARCH=arm64 munch_defconfig O=out || true
+
+          # Sync config
+          make O=out oldconfig || true
+
+          # Compile kernel
           make -j$(nproc --all) O=out \
           CC=clang \
           ARCH=arm64 \
