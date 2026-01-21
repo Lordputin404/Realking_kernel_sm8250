@@ -57,13 +57,12 @@ jobs:
       # 5️⃣ Replace patched Image inside flashable ZIP (CRITICAL STEP)
       - name: Inject patched kernel into ZIP
         run: |
-          ZIP_FILE=$(ls *.zip | head -n 1)
+          ZIP_FILE=$(ls RealKing-*.zip | head -n 1)
           mkdir zipfix
           unzip "$ZIP_FILE" -d zipfix
 
-          # Replace kernel image (handle both Image & Image.gz cases)
           if [ -f "zipfix/Image.gz" ]; then
-            gzip -c out/arch/arm64/boot/Image > zipfix/Image.gz
+            cp out/arch/arm64/boot/Image.gz zipfix/Image.gz
           elif [ -f "zipfix/Image" ]; then
             cp out/arch/arm64/boot/Image zipfix/Image
           else
