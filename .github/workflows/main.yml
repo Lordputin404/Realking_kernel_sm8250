@@ -36,15 +36,23 @@ jobs:
           export BUILD_CHOICE=1
           ./build_kernel.sh
 
-      # 4️⃣ Apply KPM binary patch on compiled Image
       - name: Apply SukiSU KPM patch
         run: |
           cd out/arch/arm64/boot
+
+          # Decompress Image.gz -> Image (required for KPM)
+          gunzip -kf Image.gz
+
           wget https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.12.2/patch_linux
           chmod +x patch_linux
           ./patch_linux
+
+          # Replace original Image with patched one
           rm -f Image
           mv oImage Image
+
+          # Re-compress patched Image
+          gzip -f Image
 
       # 5️⃣ Replace patched Image inside flashable ZIP (CRITICAL STEP)
       - name: Inject patched kernel into ZIP
