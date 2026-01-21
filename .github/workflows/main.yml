@@ -17,25 +17,56 @@ jobs:
           clean: true
           set-safe-directory: true
 
-      - name: Integrate KernelSU-Next (Manual setup)
+      # 1️⃣ Inject SukiSU code (same as working RK kernel)
+      - name: Integrate SukiSU (Manual setup)
         run: |
-          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
-    
-      - name: Prepare build_kernel.sh (Auto-select choices + non-interactive)
+          curl -LSs "https://raw.githubusercontent.com/ApartTUSITU/SukiSU-Ultra/main/kernel/setup.sh" | bash -
+
+      # 2️⃣ Prepare build_kernel.sh (NON-interactive only)
+      - name: Prepare build_kernel.sh (Auto-select choices)
         run: |
           chmod +x build_kernel.sh
           sed -i 's|read -p "Enter the number of your choice: " clang_choice|clang_choice=${CLANG_CHOICE:-2}|g' build_kernel.sh
           sed -i 's|read -p "Enter the number of your choice: " build_choice|build_choice=${BUILD_CHOICE:-1}|g' build_kernel.sh
-          echo "CI mode enabled — script will take env choices."
 
-      - name: Run Kernel Build Script with Auto-Selected Options
+      # 3️⃣ Enable SukiSU kernel configs BEFORE build
+      - name: Enable SukiSU kernel configs
+        run: |
+          scripts/config --file out/.config 2>/dev/null || true
+          scripts/config --file out/.config \
+            -e KSU \
+            -e KSU_SUSFS \
+            -e KSU_SUSFS_SUS_PATH \
+            -e KSU_SUSFS_SUS_MOUNT \
+            -e KSU_SUSFS_SUS_KSTAT \
+            -e KSU_SUSFS_SPOOF_UNAME \
+            -e KSU_SUSFS_ENABLE_LOG \
+            -e KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS \
+            -e KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG \
+            -e KSU_SUSFS_OPEN_REDIRECT \
+            -e KSU_SUSFS_SUS_MAP \
+            -e THREAD_INFO_IN_TASK \
+            -e KPM || true
+
+      # 4️⃣ Build kernel (ONLY build happens here)
+      - name: Run Kernel Build Script
         run: |
           export CLANG_CHOICE=2
           export BUILD_CHOICE=1
           ./build_kernel.sh
 
+      # 5️⃣ Apply KPM binary patch (post-build Image patch)
+      - name: Apply SukiSU KPM patch
+        run: |
+          cd out/arch/arm64/boot
+          wget https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.12.2/patch_linux
+          chmod +x patch_linux
+          ./patch_linux
+          rm -f Image
+          mv oImage Image
+
       - name: Upload Kernel ZIP (script generated)
         uses: actions/upload-artifact@v4
         with:
           name: RealKing-Kernel-ZIP
-          path: "*.zip"    
+          path: "*.zip"
