@@ -17,45 +17,26 @@ jobs:
           clean: true
           set-safe-directory: true
 
-      # 1️⃣ Inject SukiSU code (same as working RK kernel)
+      # 1️⃣ Inject SukiSU code (source-level integration)
       - name: Integrate SukiSU (Manual setup)
         run: |
           curl -LSs "https://raw.githubusercontent.com/ApartTUSITU/SukiSU-Ultra/main/kernel/setup.sh" | bash -
 
-      # 2️⃣ Prepare build_kernel.sh (NON-interactive only)
+      # 2️⃣ Prepare build_kernel.sh (NON-interactive, CI safe)
       - name: Prepare build_kernel.sh (Auto-select choices)
         run: |
           chmod +x build_kernel.sh
           sed -i 's|read -p "Enter the number of your choice: " clang_choice|clang_choice=${CLANG_CHOICE:-2}|g' build_kernel.sh
           sed -i 's|read -p "Enter the number of your choice: " build_choice|build_choice=${BUILD_CHOICE:-1}|g' build_kernel.sh
 
-      # 3️⃣ Enable SukiSU kernel configs BEFORE build
-      - name: Enable SukiSU kernel configs
-        run: |
-          scripts/config --file out/.config 2>/dev/null || true
-          scripts/config --file out/.config \
-            -e KSU \
-            -e KSU_SUSFS \
-            -e KSU_SUSFS_SUS_PATH \
-            -e KSU_SUSFS_SUS_MOUNT \
-            -e KSU_SUSFS_SUS_KSTAT \
-            -e KSU_SUSFS_SPOOF_UNAME \
-            -e KSU_SUSFS_ENABLE_LOG \
-            -e KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS \
-            -e KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG \
-            -e KSU_SUSFS_OPEN_REDIRECT \
-            -e KSU_SUSFS_SUS_MAP \
-            -e THREAD_INFO_IN_TASK \
-            -e KPM || true
-
-      # 4️⃣ Build kernel (ONLY build happens here)
+      # 3️⃣ Run kernel build (defconfig + full build + ZIP creation)
       - name: Run Kernel Build Script
         run: |
           export CLANG_CHOICE=2
           export BUILD_CHOICE=1
           ./build_kernel.sh
 
-      # 5️⃣ Apply KPM binary patch (post-build Image patch)
+      # 4️⃣ Apply KPM binary patch on compiled Image
       - name: Apply SukiSU KPM patch
         run: |
           cd out/arch/arm64/boot
@@ -65,8 +46,32 @@ jobs:
           rm -f Image
           mv oImage Image
 
-      - name: Upload Kernel ZIP (script generated)
+      # 5️⃣ Replace patched Image inside flashable ZIP (CRITICAL STEP)
+      - name: Inject patched kernel into ZIP
+        run: |
+          ZIP_FILE=$(ls *.zip | head -n 1)
+          mkdir zipfix
+          unzip "$ZIP_FILE" -d zipfix
+
+          # Replace kernel image (handle both Image & Image.gz cases)
+          if [ -f "zipfix/Image.gz" ]; then
+            gzip -c out/arch/arm64/boot/Image > zipfix/Image.gz
+          elif [ -f "zipfix/Image" ]; then
+            cp out/arch/arm64/boot/Image zipfix/Image
+          else
+            echo "❌ No kernel Image found inside ZIP"
+            exit 1
+          fi
+
+          rm "$ZIP_FILE"
+          cd zipfix
+          zip -r "../$ZIP_FILE" *
+          cd ..
+          rm -rf zipfix
+
+      # 6️⃣ Upload FINAL patched ZIP
+      - name: Upload Kernel ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: RealKing-Kernel-ZIP
+          name: RealKing-Kernel-SukiSU-KPM
           path: "*.zip"
