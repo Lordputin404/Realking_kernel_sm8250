@@ -109,6 +109,25 @@ fi
 # kernel-Compilation
 
 make $KERNEL_DEFCONFIG O=out CC=clang
+
+make scripts O=out
+scripts/config --file out/.config \
+  -e KSU \
+  -e KSU_SUSFS \
+  -e KSU_SUSFS_SUS_PATH \
+  -e KSU_SUSFS_SUS_MOUNT \
+  -e KSU_SUSFS_SUS_KSTAT \
+  -e KSU_SUSFS_SPOOF_UNAME \
+  -e KSU_SUSFS_ENABLE_LOG \
+  -e KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS \
+  -e KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG \
+  -e KSU_SUSFS_OPEN_REDIRECT \
+  -e KSU_SUSFS_SUS_MAP \
+  -e THREAD_INFO_IN_TASK \
+  -e KPM
+
+make olddefconfig O=out
+
 make -j$(nproc --all) O=out \
   CC=clang \
   ARCH=arm64 \
